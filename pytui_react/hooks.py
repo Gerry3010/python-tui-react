@@ -3,6 +3,7 @@ from typing import Any, Callable, List, Optional, Tuple, TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     from .base import Component
+    from textual.app import App as TextualApp
 
 class HookState:
     def __init__(self, value: Any):
@@ -101,3 +102,57 @@ class Context:
 
 def createContext(default_value: Any) -> Context:
     return Context(default_value)
+
+def useApp() -> TextualApp:
+    """Returns the current Textual App instance."""
+    comp = get_current_component()
+    return comp.app
+
+def useInterval(callback: Callable, interval: float, deps: Optional[List[Any]] = None) -> None:
+    """Runs a callback at regular intervals."""
+    comp = get_current_component()
+    
+    def effect():
+        timer = comp.set_interval(interval, callback)
+        return lambda: timer.stop()
+    
+    useEffect(effect, deps if deps is not None else [interval])
+
+def useTimeout(callback: Callable, delay: float, deps: Optional[List[Any]] = None) -> None:
+    """Runs a callback after a delay."""
+    comp = get_current_component()
+    
+    def effect():
+        timer = comp.set_timer(delay, callback)
+        return lambda: timer.stop()
+    
+    useEffect(effect, deps if deps is not None else [delay])
+
+def useKey(key: str, callback: Callable) -> None:
+    """Registers a callback for a specific key press."""
+    comp = get_current_component()
+    
+    if not hasattr(comp, "_key_handlers"):
+        comp._key_handlers = {}
+    
+    def effect():
+        comp._key_handlers[key] = callback
+        return lambda: comp._key_handlers.pop(key, None)
+    
+    useEffect(effect, [key])
+
+def useFocus() -> Tuple[bool, Callable[[], None]]:
+    """Manages focus state for the component."""
+    comp = get_current_component()
+    focused, set_focused = useState(comp.has_focus)
+    
+    if not hasattr(comp, "_focus_handlers"):
+        comp._focus_handlers = set()
+    
+    def effect():
+        comp._focus_handlers.add(set_focused)
+        return lambda: comp._focus_handlers.remove(set_focused)
+    
+    useEffect(effect, [])
+    
+    return focused, lambda: comp.focus()

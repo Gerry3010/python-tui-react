@@ -6,7 +6,9 @@ from textual.widgets import (
     Button as TextualButton,
     Input as TextualInput,
     ListView as TextualListView,
-    ListItem as TextualListItem
+    ListItem as TextualListItem,
+    Header as TextualHeader,
+    Footer as TextualFooter
 )
 from textual.containers import Container as TextualContainer, Vertical as TextualVertical, Horizontal as TextualHorizontal
 from .base import register_widget, UIBuilder
@@ -101,6 +103,12 @@ def Input(value: str = "", placeholder: str = "", styles: Optional[dict] = None,
     widget = TextualInput(value=value, placeholder=placeholder, **kwargs)
     _apply_styles(widget, styles)
     return register_widget(widget)
+
+def Header(*args, **kwargs) -> TextualHeader:
+    return register_widget(TextualHeader(*args, **kwargs))
+
+def Footer(*args, **kwargs) -> TextualFooter:
+    return register_widget(TextualFooter(*args, **kwargs))
 
 class ListView(TextualListView):
     def __init__(self, on_selected: Optional[Callable] = None, styles: Optional[dict] = None, **kwargs):

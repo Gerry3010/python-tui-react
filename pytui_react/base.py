@@ -5,6 +5,7 @@ if TYPE_CHECKING:
     from textual.app import ComposeResult
 
 from textual.widget import Widget
+from textual import events
 
 class UIBuilder:
     """A context manager to collect widgets defined in a 'with' block."""
@@ -58,13 +59,33 @@ def register_widget(widget: Widget) -> Widget:
 class Component(Widget):
     """Base class for React-like components."""
 
-    def __init__(self, *args: Any, **kwargs: Any):
+    def __init__(self, *args: Any, auto_focus: bool = False, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self._hooks: List[Any] = []
         self._hook_index: int = 0
         self._context_snapshot: List[dict] = list(UIBuilder._context_stack)
+        self.auto_focus = auto_focus
         register_widget(self)
     
+    def on_mount(self) -> None:
+        if self.auto_focus:
+            self.focus()
+
+    def on_key(self, event: events.Key) -> None:
+        if hasattr(self, "_key_handlers") and event.key in self._key_handlers:
+            self._key_handlers[event.key]()
+            event.stop()
+
+    def on_focus(self) -> None:
+        if hasattr(self, "_focus_handlers"):
+            for handler in self._focus_handlers:
+                handler(True)
+
+    def on_blur(self) -> None:
+        if hasattr(self, "_focus_handlers"):
+            for handler in self._focus_handlers:
+                handler(False)
+
     def compose(self) -> ComposeResult:
         old_comp = UIBuilder._current_component
         UIBuilder._current_component = self

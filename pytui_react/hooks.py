@@ -142,12 +142,14 @@ def useTimeout(callback: Callable, delay: float, deps: Optional[List[Any]] = Non
     
     useEffect(effect, deps if deps is not None else [delay])
 
-def useKey(key: str, callback: Callable, description: Optional[str] = None, show: bool = True) -> None:
+def useKey(key: str, callback: Callable, description: Optional[str] = None, show: bool = True, global_key: bool = False) -> None:
     """Registers a callback for a specific key press. 
     
     If description is provided, it registers a binding that will be displayed in the Footer.
+    If global_key is True, the binding is registered on the App level.
     """
     comp = get_current_component()
+    target = comp.app if global_key else comp
     
     if not hasattr(comp, "_key_handlers"):
         comp._key_handlers = {}
@@ -156,21 +158,42 @@ def useKey(key: str, callback: Callable, description: Optional[str] = None, show
         if description:
             # Use Textual's binding system
             action_id = f"k_{key}_{id(callback)}"
-            comp._binding_handlers[action_id] = callback
             
-            # Register the binding manually since bind() might not be available
-            binding = Binding(key, f"hook_dispatch('{action_id}')", description, show=show)
-            comp._bindings._add_binding(binding)
+            # Ensure the target has binding storage
+            if not hasattr(target, "_binding_handlers"):
+                target._binding_handlers = {}
+            target._binding_handlers[action_id] = callback
             
+            if hasattr(target, "bind"):
+                target.bind(key, f"hook_dispatch('{action_id}')", description=description, show=show)
+            else:
+                # Fallback
+                binding = Binding(key, f"hook_dispatch('{action_id}')", description, show=show)
+                if hasattr(target, "_bindings"):
+                    target._bindings._add_binding(binding)
+            
+            # Try to refresh bindings
+            try:
+                if hasattr(comp.app, "refresh_bindings"):
+                    comp.app.refresh_bindings()
+            except Exception:
+                pass
+
             def cleanup():
-                comp._binding_handlers.pop(action_id, None)
-                _unbind(comp, key)
+                if hasattr(target, "_binding_handlers"):
+                    target._binding_handlers.pop(action_id, None)
+                _unbind(target, key)
+                try:
+                    if hasattr(comp.app, "refresh_bindings"):
+                        comp.app.refresh_bindings()
+                except Exception:
+                    pass
             return cleanup
         else:
             comp._key_handlers[key] = callback
             return lambda: comp._key_handlers.pop(key, None)
     
-    useEffect(effect, [key, description, show])
+    useEffect(effect, [key, description, show, global_key])
 
 def _unbind(comp: Any, key: str) -> None:
     """Helper to remove a binding from a Textual component."""

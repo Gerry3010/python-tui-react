@@ -1,5 +1,8 @@
 import pytest
-from pytui_react import App, Component, Router, Routes, Route, Link, Label, useNavigate, useParams, Vertical
+from pytui_react import (
+    App, Component, Router, Routes, Route, DialogRoute, DialogOutlet,
+    Link, Label, useNavigate, useParams, useCloseDialog, Vertical,
+)
 from textual.widgets import Label as TextualLabel
 
 class SimpleRouterApp(Component):
@@ -114,3 +117,88 @@ async def test_dynamic_routing():
         await pilot.pause()
         await pilot.pause()
         assert app.screen.query_one(TextualLabel, expect_type=TextualLabel).content == "User: abc"
+
+@pytest.mark.asyncio
+async def test_dialog_route():
+    class UserDetail(Component):
+        def build(self):
+            params = useParams()
+            close = useCloseDialog()
+            with Vertical():
+                Label(f"Detail: {params.get('id')}", id="detail-label")
+                Link("/", "Close", id="close-link")
+
+    class DialogApp(Component):
+        def build(self):
+            with Router():
+                with Vertical():
+                    with Routes():
+                        with Route("/"):
+                            Label("Home List", id="home-label")
+                    with DialogOutlet():
+                        with DialogRoute("/user/:id"):
+                            UserDetail()
+                    Link("/user/42", "Open detail", dialog=True, id="open-link")
+
+    app = App(DialogApp())
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+
+        # Dialog closed initially, background visible, no detail content.
+        assert len(app.screen.query("#home-label")) == 1
+        assert len(app.screen.query("#detail-label")) == 0
+
+        # Open the dialog route.
+        app.screen.query_one("#open-link").focus()
+        await pilot.press("enter")
+        await pilot.pause()
+        await pilot.pause()
+
+        # Background stays mounted, dialog content appears with params.
+        assert len(app.screen.query("#home-label")) == 1
+        assert app.screen.query_one("#detail-label", expect_type=TextualLabel).content == "Detail: 42"
+
+        # Closing the dialog (via Link navigating back to "/") removes it
+        # but keeps the background route intact.
+        app.screen.query_one("#close-link").focus()
+        await pilot.press("enter")
+        await pilot.pause()
+        await pilot.pause()
+
+        assert len(app.screen.query("#home-label")) == 1
+        assert len(app.screen.query("#detail-label")) == 0
+
+@pytest.mark.asyncio
+async def test_dialog_route_escape_closes():
+    class UserDetail(Component):
+        def build(self):
+            params = useParams()
+            Label(f"Detail: {params.get('id')}", id="detail-label")
+
+    class DialogApp(Component):
+        def build(self):
+            with Router():
+                with Vertical():
+                    with Routes():
+                        with Route("/"):
+                            Label("Home List", id="home-label")
+                    with DialogOutlet():
+                        with DialogRoute("/user/:id"):
+                            UserDetail()
+                    Link("/user/42", "Open detail", dialog=True, id="open-link")
+
+    app = App(DialogApp())
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause()
+        app.screen.query_one("#open-link").focus()
+        await pilot.press("enter")
+        await pilot.pause()
+        await pilot.pause()
+        assert len(app.screen.query("#detail-label")) == 1
+
+        await pilot.press("escape")
+        await pilot.pause()
+        await pilot.pause()
+
+        assert len(app.screen.query("#detail-label")) == 0
+        assert len(app.screen.query("#home-label")) == 1

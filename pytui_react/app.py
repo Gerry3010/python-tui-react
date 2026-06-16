@@ -4,7 +4,13 @@ from .base import Component
 
 class App(TextualApp):
     """Main application class for pytui-react."""
-    
+
+    CSS = """
+    Screen {
+        layers: base dialog;
+    }
+    """
+
     def __init__(self, root: Component, **kwargs):
         super().__init__(**kwargs)
         self.root = root

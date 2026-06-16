@@ -80,6 +80,53 @@ class Button(TextualButton):
         if self.on_click_handler:
             self.on_click_handler()
 
+class Dialog(TextualContainer):
+    """A full-screen overlay that centers its content, used for modal/detail routes."""
+
+    DEFAULT_CSS = """
+    Dialog {
+        layer: dialog;
+        dock: top;
+        width: 100%;
+        height: 100%;
+        align: center middle;
+        background: $background 60%;
+    }
+    Dialog > Container {
+        width: auto;
+        height: auto;
+        min-width: 30;
+        border: thick $primary;
+        background: $surface;
+        padding: 1 2;
+    }
+    """
+    can_focus = True
+
+    def __init__(self, on_close: Optional[Callable] = None, styles: Optional[dict] = None, **kwargs):
+        super().__init__(**kwargs)
+        _apply_styles(self, styles)
+        self.on_close = on_close
+        register_widget(self)
+        self._builder = UIBuilder()
+
+    def __enter__(self):
+        return self._builder.__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return self._builder.__exit__(exc_type, exc_val, exc_tb)
+
+    def compose(self):
+        yield TextualContainer(*self._builder.widgets)
+
+    def on_mount(self) -> None:
+        self.focus()
+
+    def on_key(self, event) -> None:
+        if event.key == "escape" and self.on_close is not None:
+            self.on_close()
+            event.stop()
+
 class ContextProvider(Container):
     def __init__(self, context: Any, value: Any, **kwargs):
         super().__init__(**kwargs)
@@ -111,12 +158,17 @@ def Footer(*args, **kwargs) -> TextualFooter:
     return register_widget(TextualFooter(*args, **kwargs))
 
 class ListView(TextualListView):
-    def __init__(self, on_selected: Optional[Callable] = None, styles: Optional[dict] = None, **kwargs):
+    def __init__(self, on_selected: Optional[Callable] = None, styles: Optional[dict] = None, auto_focus: bool = False, **kwargs):
         super().__init__(**kwargs)
         _apply_styles(self, styles)
         self.on_selected_handler = on_selected
+        self.auto_focus = auto_focus
         register_widget(self)
         self._builder = UIBuilder()
+
+    def on_mount(self) -> None:
+        if self.auto_focus:
+            self.focus()
 
     def __enter__(self):
         return self._builder.__enter__()
@@ -128,6 +180,12 @@ class ListView(TextualListView):
         yield from self._builder.widgets
 
     def on_list_view_selected(self, event: TextualListView.Selected) -> None:
+        self._handle_selection(event)
+
+    def on_list_item_activated(self, event: TextualListItem.Activated) -> None:
+        self._handle_selection(event)
+
+    def _handle_selection(self, event: Any) -> None:
         if self.on_selected_handler:
             self.on_selected_handler(event)
 

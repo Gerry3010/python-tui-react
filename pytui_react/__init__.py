@@ -1,8 +1,8 @@
 from .base import Component, UIBuilder
-from .widgets import Container, Vertical, Horizontal, Button, Label, Input, ContextProvider, ListView, ListItem, Header, Footer
+from .widgets import Container, Vertical, Horizontal, Button, Label, Input, ContextProvider, ListView, ListItem, Header, Footer, Dialog
 from .app import App, run
 from .hooks import useState, useEffect, useContext, createContext, useApp, useInterval, useTimeout, useKey, useFocus
-from .router import Router, Routes, Route, Link, useNavigate, useLocation, useParams
+from .router import Router, Routes, Route, DialogRoute, DialogOutlet, Link, useNavigate, useLocation, useParams, useCloseDialog
 
 __all__ = [
     "Component",
@@ -17,6 +17,7 @@ __all__ = [
     "ListItem",
     "Header",
     "Footer",
+    "Dialog",
     "App",
     "run",
     "useState",
@@ -31,8 +32,11 @@ __all__ = [
     "Router",
     "Routes",
     "Route",
+    "DialogRoute",
+    "DialogOutlet",
     "Link",
     "useNavigate",
     "useLocation",
     "useParams",
+    "useCloseDialog",
 ]

@@ -58,6 +58,7 @@ def register_widget(widget: Widget) -> Widget:
 
 class Component(Widget):
     """Base class for React-like components."""
+    can_focus = True
 
     def __init__(self, *args: Any, auto_focus: bool = False, **kwargs: Any):
         super().__init__(*args, **kwargs)
@@ -85,9 +86,25 @@ class Component(Widget):
             self.focus()
 
     def on_key(self, event: events.Key) -> None:
+        # 1. Check local key handlers (for useKey without description)
         if hasattr(self, "_key_handlers") and event.key in self._key_handlers:
             self._key_handlers[event.key]()
             event.stop()
+            return
+
+        # 2. Check bindings for hook actions (for useKey with description)
+        # Textual usually handles this via actions, but we can intercept it here for reliability
+        for binding in self._bindings.key_to_bindings.get(event.key, []):
+            if isinstance(binding.action, str) and "hook_dispatch" in binding.action:
+                # Extract action_id from hook_dispatch('action_id')
+                import re
+                match = re.search(r"hook_dispatch\('([^']+)'\)", binding.action)
+                if match:
+                    action_id = match.group(1)
+                    if action_id in self._binding_handlers:
+                        self._binding_handlers[action_id]()
+                        event.stop()
+                        return
 
     def action_hook_dispatch(self, action_id: str) -> None:
         """Dispatches a binding action to the corresponding hook handler."""

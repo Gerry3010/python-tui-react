@@ -2,10 +2,10 @@ from .base import Component, UIBuilder
 from .widgets import Container, Vertical, Horizontal, Button, Label, Input, ContextProvider, ListView, ListItem, Header, Footer
 from .app import App, run
 from .hooks import useState, useEffect, useContext, createContext, useApp, useInterval, useTimeout, useKey, useFocus
+from .router import Router, Routes, Route, Link, useNavigate, useLocation, useParams
 
 __all__ = [
     "Component",
-    "UIBuilder",
     "Container",
     "Vertical",
     "Horizontal",
@@ -28,4 +28,11 @@ __all__ = [
     "useTimeout",
     "useKey",
     "useFocus",
+    "Router",
+    "Routes",
+    "Route",
+    "Link",
+    "useNavigate",
+    "useLocation",
+    "useParams",
 ]

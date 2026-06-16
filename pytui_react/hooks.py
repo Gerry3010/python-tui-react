@@ -92,10 +92,22 @@ def _schedule_effect(comp: Component, idx: int, callback: Callable) -> None:
 def useContext(context: Any) -> Any:
     from .base import UIBuilder
     comp = UIBuilder.get_current_component()
-    if comp and hasattr(comp, "_context_snapshot"):
-        for frame in reversed(comp._context_snapshot):
-            if context in frame:
-                return frame[context]
+    
+    # 1. Check current build-time stack (for synchronous nesting)
+    val = UIBuilder.get_context_value(context)
+    if val is not getattr(context, "default_value", None):
+        return val
+
+    # 2. Check widget parent chain (for async re-renders)
+    if comp:
+        curr = comp.parent
+        while curr:
+            # We look for a widget that has 'context' and 'value' attributes 
+            # (matches ContextProvider in widgets.py)
+            if hasattr(curr, "context") and getattr(curr, "context") == context:
+                return getattr(curr, "value")
+            curr = curr.parent
+
     return getattr(context, "default_value", None)
 
 class Context:

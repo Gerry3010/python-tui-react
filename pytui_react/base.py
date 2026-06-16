@@ -66,7 +66,19 @@ class Component(Widget):
         self._context_snapshot: List[dict] = list(UIBuilder._context_stack)
         self.auto_focus = auto_focus
         self._binding_handlers: dict[str, Callable] = {}
+        self._children_builder = UIBuilder()
         register_widget(self)
+
+    def __enter__(self) -> UIBuilder:
+        return self._children_builder.__enter__()
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        return self._children_builder.__exit__(exc_type, exc_val, exc_tb)
+
+    def render_children(self) -> None:
+        """Registers all children captured via 'with' blocks with the current UIBuilder."""
+        for widget in self._children_builder.widgets:
+            register_widget(widget)
     
     def on_mount(self) -> None:
         if self.auto_focus:

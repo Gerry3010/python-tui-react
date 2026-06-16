@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, List, Optional, Any, Generator, TypeVar, Generic
+from typing import TYPE_CHECKING, List, Optional, Any, Generator, TypeVar, Generic, Callable
 
 if TYPE_CHECKING:
     from textual.app import ComposeResult
@@ -140,6 +140,14 @@ class Component(Widget):
                     state.cleanup()
                 except Exception:
                     pass
+        # Reset hook state on unmount. Singleton widgets like Route/FolderView
+        # get fully unmounted and later remounted (rather than just re-rendered
+        # in place) every time navigation moves away and back. Without this,
+        # useEffect's dep-comparison thinks "nothing changed" on remount and
+        # skips re-running effects (e.g. useKey bindings), even though the
+        # previous mount's cleanup already tore them down.
+        self._hooks = []
+        self._hook_index = 0
 
     def build(self) -> None:
         """Override this method to define the UI structure."""

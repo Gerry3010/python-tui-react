@@ -59,6 +59,45 @@ Consumes a value from a `ContextProvider`.
 theme = useContext(ThemeContext)
 ```
 
+### Routing
+
+#### `Router` / `Routes` / `Route` / `Link`
+`Router` holds the current location and provides it to descendants. `Routes` renders the first child `Route` whose `path` matches. `Link` navigates without replacing the whole app.
+```python
+with Router():
+    Navbar()
+    with Routes():
+        with Route("/"):
+            Home()
+        with Route("/about"):
+            About()
+```
+
+Use `:name` segments for dynamic params, read them with `useParams()`:
+```python
+with Route("/user/:id"):
+    UserProfile()
+
+class UserProfile(Component):
+    def build(self):
+        params = useParams()
+        Label(f"User: {params['id']}")
+```
+
+`useLocation()` returns the current path, e.g. to highlight the active nav link.
+
+#### `DialogRoute` / `DialogOutlet`
+For detail views that should overlay the current page instead of replacing it, use `DialogRoute` together with a `DialogOutlet`. The outlet must be placed explicitly in the tree (it is not mounted automatically by `Router`/`App`):
+```python
+with Routes():
+    with Route("/"):
+        UserList()
+with DialogOutlet():
+    with DialogRoute("/user/:id"):
+        UserDetailDialog()
+```
+Navigate into the dialog with `Link(to, label, dialog=True)`, or `navigate(path, dialog=True)` from `useNavigate()`. Close it with `useCloseDialog()`, by navigating to a non-dialog path, or by pressing Escape (handled by the `Dialog` widget).
+
 ### Components
 
 #### `Component`
@@ -85,3 +124,9 @@ Check the `examples/` directory for more comprehensive examples:
 - `01_counter.py`: Basic state management.
 - `02_effects.py`: Side effects and timers.
 - `03_context.py`: Sharing data with Context.
+- `04_scrolling.py`: Scrollable containers.
+- `05_list_view.py`: `ListView`/`ListItem` and selection handling.
+- `06_framework_extensions.py`: Custom hooks and widgets.
+- `07_routing.py`: `Router`/`Routes`/`Route`/`Link` navigation.
+- `08_dynamic_routing.py`: Dynamic path params with `useParams()`.
+- `09_dialog_routes.py`: Modal detail views with `DialogRoute`/`DialogOutlet`.

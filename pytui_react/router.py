@@ -52,22 +52,28 @@ class Router(Component):
         self.initial_path = initial_path
 
     def build(self):
-        path, set_path = useState(self.initial_path)
-        dialog_path, set_dialog_path = useState(None)
+        # path and dialog_path are kept in a single useState (instead of two
+        # separate ones) so that navigate()/close_dialog() always trigger
+        # exactly one re-render. Two independent set_state calls in a row
+        # would recompose the whole subtree twice in a row for a single
+        # navigation; components whose effect deps don't change between
+        # those two passes (e.g. useKey bindings) get unmounted by the first
+        # pass and never get a chance to re-register, since the second
+        # pass's useEffect sees "unchanged" deps and skips rescheduling.
+        location, set_location = useState({"path": self.initial_path, "dialog_path": None})
 
         def navigate(new_path: str, dialog: bool = False) -> None:
             if dialog:
-                set_dialog_path(new_path)
+                set_location(lambda loc: {**loc, "dialog_path": new_path})
             else:
-                set_dialog_path(None)
-                set_path(new_path)
+                set_location({"path": new_path, "dialog_path": None})
 
         def close_dialog() -> None:
-            set_dialog_path(None)
+            set_location(lambda loc: {**loc, "dialog_path": None})
 
         with ContextProvider(RouterContext, {
-            "path": path,
-            "dialog_path": dialog_path,
+            "path": location["path"],
+            "dialog_path": location["dialog_path"],
             "navigate": navigate,
             "close_dialog": close_dialog,
         }):
@@ -79,7 +85,7 @@ class Routes(Component):
     def build(self):
         context = useContext(RouterContext)
         current_path = context.get("path", "/")
-        
+
         for child in self._children_builder.widgets:
             if hasattr(child, "path"):
                 params = match_path(child.path, current_path)
@@ -160,6 +166,11 @@ def useLocation() -> str:
     """Hook to get the current path."""
     context = useContext(RouterContext)
     return context.get("path", "/")
+
+def useDialogLocation() -> Optional[str]:
+    """Hook to get the current dialog path (None if no dialog is open)."""
+    context = useContext(RouterContext)
+    return context.get("dialog_path")
 
 def useCloseDialog() -> Callable[[], None]:
     """Hook to get the function that closes the currently open dialog route."""

@@ -10,7 +10,10 @@ from textual.widgets import (
     Header as TextualHeader,
     Footer as TextualFooter
 )
+from textual.widgets._header import HeaderTitle
 from textual.containers import Container as TextualContainer, Vertical as TextualVertical, Horizontal as TextualHorizontal
+from textual.css.query import NoMatches
+from textual.dom import NoScreen
 from .base import register_widget, UIBuilder
 
 def _apply_styles(widget: Widget, styles: Optional[dict] = None) -> None:
@@ -150,6 +153,35 @@ def Input(value: str = "", placeholder: str = "", styles: Optional[dict] = None,
     widget = TextualInput(value=value, placeholder=placeholder, **kwargs)
     _apply_styles(widget, styles)
     return register_widget(widget)
+
+def _safe_header_on_mount(self, _) -> None:
+    """Replacement for Header._on_mount that tolerates being stale after unmount.
+
+    pytui_react re-renders by recreating widgets like Header on every build(),
+    but Header._on_mount() subscribes its set_title callback to the
+    app/screen "title"/"sub_title" reactives via self.watch(...). That
+    subscription is never cleaned up on unmount (textual.reactive._watch
+    appends permanently to obj.__watchers), so every previously-unmounted
+    Header still fires set_title() on the next title change. Upstream only
+    guards against NoScreen; once this Header's own HeaderTitle child is gone
+    too it raises NoMatches instead, which Textual treats as fatal and exits
+    the whole app. This patches Header._on_mount itself (rather than
+    subclassing) because Textual dispatches lifecycle handlers like
+    `_on_mount` once per class in the MRO, so a subclass override would run
+    *alongside*, not instead of, the original unsafe handler.
+    """
+    async def set_title() -> None:
+        try:
+            self.query_one(HeaderTitle).update(self.format_title())
+        except (NoScreen, NoMatches):
+            pass
+
+    self.watch(self.app, "title", set_title)
+    self.watch(self.app, "sub_title", set_title)
+    self.watch(self.screen, "title", set_title)
+    self.watch(self.screen, "sub_title", set_title)
+
+TextualHeader._on_mount = _safe_header_on_mount
 
 def Header(*args, **kwargs) -> TextualHeader:
     return register_widget(TextualHeader(*args, **kwargs))

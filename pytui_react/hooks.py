@@ -150,10 +150,10 @@ def useKey(key: str, callback: Callable, description: Optional[str] = None, show
     """
     comp = get_current_component()
     target = comp.app if global_key else comp
-    
-    if not hasattr(comp, "_key_handlers"):
-        comp._key_handlers = {}
-    
+
+    if not hasattr(target, "_key_handlers"):
+        target._key_handlers = {}
+
     def effect():
         if description:
             # Use Textual's binding system
@@ -190,8 +190,8 @@ def useKey(key: str, callback: Callable, description: Optional[str] = None, show
                     pass
             return cleanup
         else:
-            comp._key_handlers[key] = callback
-            return lambda: comp._key_handlers.pop(key, None)
+            target._key_handlers[key] = callback
+            return lambda: target._key_handlers.pop(key, None)
     
     useEffect(effect, [key, description, show, global_key])
 

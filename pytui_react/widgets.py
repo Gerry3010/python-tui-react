@@ -1,6 +1,13 @@
 from __future__ import annotations
 from typing import Any, Callable, Optional
-from textual.widgets import Label as TextualLabel, Button as TextualButton, Input as TextualInput
+from textual.widget import Widget
+from textual.widgets import (
+    Label as TextualLabel,
+    Button as TextualButton,
+    Input as TextualInput,
+    ListView as TextualListView,
+    ListItem as TextualListItem
+)
 from textual.containers import Container as TextualContainer, Vertical as TextualVertical, Horizontal as TextualHorizontal
 from .base import register_widget, UIBuilder
 
@@ -94,3 +101,40 @@ def Input(value: str = "", placeholder: str = "", styles: Optional[dict] = None,
     widget = TextualInput(value=value, placeholder=placeholder, **kwargs)
     _apply_styles(widget, styles)
     return register_widget(widget)
+
+class ListView(TextualListView):
+    def __init__(self, on_selected: Optional[Callable] = None, styles: Optional[dict] = None, **kwargs):
+        super().__init__(**kwargs)
+        _apply_styles(self, styles)
+        self.on_selected_handler = on_selected
+        register_widget(self)
+        self._builder = UIBuilder()
+
+    def __enter__(self):
+        return self._builder.__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return self._builder.__exit__(exc_type, exc_val, exc_tb)
+
+    def compose(self):
+        yield from self._builder.widgets
+
+    def on_list_view_selected(self, event: TextualListView.Selected) -> None:
+        if self.on_selected_handler:
+            self.on_selected_handler(event)
+
+class ListItem(TextualListItem):
+    def __init__(self, styles: Optional[dict] = None, **kwargs):
+        super().__init__(**kwargs)
+        _apply_styles(self, styles)
+        register_widget(self)
+        self._builder = UIBuilder()
+
+    def __enter__(self):
+        return self._builder.__enter__()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return self._builder.__exit__(exc_type, exc_val, exc_tb)
+
+    def compose(self):
+        yield from self._builder.widgets

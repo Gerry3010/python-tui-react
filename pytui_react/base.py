@@ -65,6 +65,7 @@ class Component(Widget):
         self._hook_index: int = 0
         self._context_snapshot: List[dict] = list(UIBuilder._context_stack)
         self.auto_focus = auto_focus
+        self._binding_handlers: dict[str, Callable] = {}
         register_widget(self)
     
     def on_mount(self) -> None:
@@ -75,6 +76,11 @@ class Component(Widget):
         if hasattr(self, "_key_handlers") and event.key in self._key_handlers:
             self._key_handlers[event.key]()
             event.stop()
+
+    def action_hook_dispatch(self, action_id: str) -> None:
+        """Dispatches a binding action to the corresponding hook handler."""
+        if action_id in self._binding_handlers:
+            self._binding_handlers[action_id]()
 
     def on_focus(self) -> None:
         if hasattr(self, "_focus_handlers"):

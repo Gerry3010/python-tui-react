@@ -5,6 +5,8 @@ if TYPE_CHECKING:
     from .base import Component
     from textual.app import App as TextualApp
 
+from textual.binding import Binding
+
 class HookState:
     def __init__(self, value: Any):
         self.value = value
@@ -128,18 +130,40 @@ def useTimeout(callback: Callable, delay: float, deps: Optional[List[Any]] = Non
     
     useEffect(effect, deps if deps is not None else [delay])
 
-def useKey(key: str, callback: Callable) -> None:
-    """Registers a callback for a specific key press."""
+def useKey(key: str, callback: Callable, description: Optional[str] = None, show: bool = True) -> None:
+    """Registers a callback for a specific key press. 
+    
+    If description is provided, it registers a binding that will be displayed in the Footer.
+    """
     comp = get_current_component()
     
     if not hasattr(comp, "_key_handlers"):
         comp._key_handlers = {}
     
     def effect():
-        comp._key_handlers[key] = callback
-        return lambda: comp._key_handlers.pop(key, None)
+        if description:
+            # Use Textual's binding system
+            action_id = f"k_{key}_{id(callback)}"
+            comp._binding_handlers[action_id] = callback
+            
+            # Register the binding manually since bind() might not be available
+            binding = Binding(key, f"hook_dispatch('{action_id}')", description, show=show)
+            comp._bindings._add_binding(binding)
+            
+            def cleanup():
+                comp._binding_handlers.pop(action_id, None)
+                _unbind(comp, key)
+            return cleanup
+        else:
+            comp._key_handlers[key] = callback
+            return lambda: comp._key_handlers.pop(key, None)
     
-    useEffect(effect, [key])
+    useEffect(effect, [key, description, show])
+
+def _unbind(comp: Any, key: str) -> None:
+    """Helper to remove a binding from a Textual component."""
+    if hasattr(comp, "_bindings") and key in comp._bindings.key_to_bindings:
+        del comp._bindings.key_to_bindings[key]
 
 def useFocus() -> Tuple[bool, Callable[[], None]]:
     """Manages focus state for the component."""

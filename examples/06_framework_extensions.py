@@ -10,10 +10,10 @@ class ExtensionExample(Component):
         # Clock effect
         useInterval(lambda: set_time_count(lambda c: c + 1), 1.0)
         
-        # Global key handlers
-        useKey("escape", lambda: app.exit())
-        useKey("backspace", lambda: set_key_pressed("Backspace"))
-        useKey("q", lambda: app.exit())
+        # Global key handlers with footer descriptions
+        useKey("escape", lambda: app.exit(), description="Exit")
+        useKey("backspace", lambda: set_key_pressed("Backspace"), description="Clear Key")
+        useKey("q", lambda: app.exit(), show=False) # Hidden binding
 
         with Vertical():
             Header()
